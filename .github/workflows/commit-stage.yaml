@@ -1,0 +1,36 @@
+name: Commit Stage
+
+description: |
+  Release candidate (RC) build with static testing (linter, unit tests, cyclomatic complexity...) ideally a 2 minutes stage and definitively less than 5.
+  An unique RC is build and stored so it can be reused on the different environements. By saving the RC we assure an unique build (less error prone) and old builds (versions) can be reused or retested.
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-20.04 # Using LTS distro instead of latest to assure an stable build
+
+    steps:
+      - name: Checkout git branch
+        uses: actions/checkout@v3
+
+      - name: Setup JDK 19
+        uses: actions/setup-java@v3
+        with:
+          java-version: '19'
+          distribution: 'corretto'
+          cache: maven # Caching dependencies to assure stability and build faster the RC
+
+      - name: Build Release Candidate with maven # TODO("Separate build from UT and IT) and execute the 3 in concurrency failing the build if one fails")
+        run: |
+          mvn --batch-mode --update-snapshots package \
+          && mkdir staging && cp target/*.jar staging
+
+      - name: Upload Release Candidate
+        uses: actions/upload-artifact@v3
+        with:
+          name: Package # TODO("will a new build replace the previous one? How to add an unique identifier (build-date, dev-version...)?")
+          path: staging
